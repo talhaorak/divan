@@ -1,0 +1,235 @@
+# Divan — LLM-readable project description
+# Version: 1.0
+# Updated: 2026-02-19
+
+## Project
+
+Name: Divan
+Purpose: Mission Control dashboard for OpenClaw AI agent workspaces. Provides a spatial, animated UI for monitoring agents, browsing workspace memory files, tracking goals, managing cron jobs, and viewing team status.
+Named after: The Ottoman imperial council (Divan-ı Hümayun) where viziers reported to the Sultan.
+Repository: https://github.com/talhaorak/divan
+
+## Tech Stack
+
+Framework: Next.js 16 (App Router, TypeScript, strict mode)
+Styling: Tailwind CSS 4 (utility-first, dark theme only)
+3D/Animation: Three.js 0.183 + @react-three/fiber + @react-three/drei (3D scene on home page)
+Animation library: Framer Motion 12 (page transitions, card animations)
+Data formats: Markdown (MEMORY.md, daily logs), YAML (goals.yaml), JSON (session/cron state)
+Data parsing: `yaml` package for YAML, `gray-matter` for frontmatter, custom parseMarkdownSections()
+HTTP/WS: Native fetch + `ws` package for gateway WebSocket
+Runtime: Node.js 20+ (tested on Node 24)
+
+## Directory Structure
+
+```
+divan/
+├── src/
+│   ├── app/                          # Next.js App Router
+│   │   ├── layout.tsx                # Root layout with LanguageProvider + ClientProviders
+│   │   ├── globals.css               # Global CSS (Tailwind base + custom vars)
+│   │   ├── page.tsx                  # Home — 3D Divan scene (/)
+│   │   ├── memory/page.tsx           # Memory browser (/memory)
+│   │   ├── tasks/page.tsx            # Goal tree + TODO (/tasks)
+│   │   ├── team/page.tsx             # Agent team view (/team)
+│   │   ├── cron/page.tsx             # Cron job manager (/cron)
+│   │   └── api/
+│   │       ├── activity/route.ts     # Git log + file change feed
+│   │       ├── agents/route.ts       # Agent info + session status
+│   │       ├── cron/route.ts         # Cron job reader from gateway
+│   │       ├── files/route.ts        # Workspace file browser API
+│   │       ├── gateway/route.ts      # Gateway health + session index proxy
+│   │       ├── goals/route.ts        # goals.yaml parser + TODO.md reader
+│   │       ├── live/route.ts         # SSE stream for live updates
+│   │       ├── memory/route.ts       # Memory file reader/writer/backup
+│   │       ├── stats/route.ts        # Workspace statistics
+│   │       └── timeline/route.ts     # Daily log file reader
+│   ├── components/
+│   │   ├── DivanScene.tsx            # Three.js 3D isometric scene
+│   │   ├── AgentCard.tsx             # Agent status card (animated)
+│   │   ├── ActivityFeed.tsx          # Live activity sidebar
+│   │   ├── ClientProviders.tsx       # Client-side provider wrapper
+│   │   ├── MemoryPreview.tsx         # Memory section preview on home page
+│   │   ├── Navbar.tsx                # Top navigation bar with language toggle
+│   │   └── QuickStats.tsx            # Dashboard stat widgets (memory count, goals, etc.)
+│   ├── contexts/
+│   │   └── LanguageContext.tsx       # i18n context: LanguageProvider + useLanguage()
+│   └── lib/
+│       ├── gateway.ts                # OpenClaw Gateway WebSocket/HTTP client helpers
+│       ├── i18n.ts                   # All UI strings in TR + EN translation dictionaries
+│       └── workspace.ts              # Workspace file system helpers (read/write/backup)
+├── .github/
+│   ├── ISSUE_TEMPLATE/
+│   │   ├── bug_report.md
+│   │   └── feature_request.md
+│   └── PULL_REQUEST_TEMPLATE.md
+├── public/                           # Static assets
+├── .env.example                      # Environment variable template
+├── SPEC.md                           # Design specification
+├── CLAUDE.md                         # Instructions for AI coding agents
+├── CONTRIBUTING.md                   # Contributor guide
+└── README.md                         # Project readme
+```
+
+## Key Files and Purposes
+
+src/lib/workspace.ts
+  - WORKSPACE constant (from OPENCLAW_WORKSPACE env or ~/clawd fallback)
+  - readWorkspaceFile(relativePath) — safe file reader (returns null on miss)
+  - listMemoryFiles() — lists memory/*.md files sorted newest-first
+  - getGoals() — parses goals.yaml with the `yaml` package
+  - listDirectory(), readFileContent(), writeFileContent() — file browser helpers
+  - backupFile(), listBackups(), restoreBackup() — backup management (.divan-backups/)
+  - parseMarkdownSections() — splits Markdown into {title, content, level}[] sections
+  - getAgents() — returns hardcoded agent metadata (Rüstem, Handan, Kahya Mesut)
+
+src/lib/i18n.ts
+  - Exports Language type ("tr" | "en")
+  - Exports `translations` record with all UI strings in both languages
+  - Keys use dot-notation namespacing: "nav.title", "memory.edit", "cron.active" etc.
+  - Param interpolation uses {placeholder} syntax in string values
+
+src/contexts/LanguageContext.tsx
+  - LanguageProvider wraps the app (in layout.tsx via ClientProviders)
+  - useLanguage() hook returns: { language, setLanguage, toggleLanguage, t, relativeTime }
+  - t(key, params?) — translate a key with optional param substitution
+  - relativeTime(timestamp) — locale-aware relative time string
+  - Language preference persisted to localStorage under key "divan-lang"
+
+src/lib/gateway.ts
+  - gwHealth() — checks gateway HTTP endpoint and returns health status
+  - Reads OPENCLAW_GATEWAY_URL, OPENCLAW_GATEWAY_HTTP, OPENCLAW_GATEWAY_TOKEN from env
+
+## API Routes
+
+GET /api/memory
+  - No params: returns { mainMemory: { sections, raw }, files: string[] }
+  - ?file=<filename>: returns { file, sections, raw } for memory/<filename>
+  - ?q=<query>: filters sections by search string
+  - ?raw=1: returns raw markdown without section parsing
+  - ?backups=<filename>: lists backup files for that memory file
+
+PUT /api/memory
+  - Body: { file: string, content: string }
+  - Writes content to workspace file (with automatic backup)
+  - Allowed files: MEMORY.md, HEARTBEAT.md, SOUL.md, AGENTS.md, USER.md, TOOLS.md, memory/*.md
+  - Returns: { ok: true, backup: "<backup-filename>" }
+
+POST /api/memory
+  - Body: { action: "restore", backupName: string, targetFile: string }
+  - Restores a backup file to the target path
+
+GET /api/goals
+  - Returns: { goals: <parsed YAML>, todo: <TODO.md content> }
+  - goals.yaml is read from workspace root; TODO.md from TODO.md
+
+GET /api/agents
+  - Returns: { agents: AgentInfo[], soul: string|null, identity: string|null }
+  - AgentInfo: { name, emoji, role, description, status, color }
+
+GET /api/gateway
+  - Returns gateway health, session index (from ~/.openclaw/agents/*/sessions/sessions.json),
+    cron job summary, and derived agent statuses
+
+GET /api/cron
+  - Returns cron job list from gateway
+
+GET /api/activity
+  - Returns recent git log + workspace file change events
+
+GET /api/files
+  - Query params for listing directory or reading file content
+  - Used by memory page file browser mode
+
+GET /api/stats
+  - Returns counts: memory files, goals, active cron jobs, git changes
+
+GET /api/live
+  - SSE stream endpoint for real-time workspace updates
+
+GET /api/timeline
+  - Returns daily log entries from memory/YYYY-MM-DD.md files
+
+## Running the Project
+
+```bash
+# Install dependencies
+npm install
+
+# Configure environment
+cp .env.example .env.local
+# Edit .env.local with workspace path and gateway token
+
+# Development server (with Turbopack)
+npm run dev          # → http://localhost:3000
+
+# Production build
+npm run build
+npm start
+
+# Lint
+npm run lint
+```
+
+## Environment Variables
+
+OPENCLAW_WORKSPACE    Path to clawd/ workspace directory. Defaults to ~/clawd.
+OPENCLAW_GATEWAY_URL  WebSocket URL of the gateway. Default: ws://127.0.0.1:18009
+OPENCLAW_GATEWAY_HTTP HTTP URL for gateway health checks. Default: http://127.0.0.1:18009
+OPENCLAW_GATEWAY_TOKEN Auth token for gateway API calls. Find with `openclaw token`.
+
+## Architecture Decisions
+
+1. Server-side gateway proxy
+   All gateway API calls go through Next.js API routes (/api/gateway, /api/cron, etc.).
+   This keeps the auth token server-side and avoids CORS issues. The browser never touches
+   the gateway directly.
+
+2. File-based data (no database)
+   All persistent data lives in the OpenClaw workspace (~/clawd/) as plain-text files:
+   Markdown for memory/identity/heartbeat, YAML for goals, JSON for cron state.
+   The app reads these files at request time — no ORM, no migrations.
+
+3. i18n system
+   All UI strings are defined in src/lib/i18n.ts as TR and EN dictionaries.
+   Components access strings exclusively via the useLanguage() hook.
+   Language preference is stored in localStorage. No server-side locale routing.
+
+4. Security sandboxing for file writes
+   writeFileContent() and readFileContent() resolve the path and verify it starts with
+   the workspace root before any fs operation. This prevents path traversal attacks.
+   Only specific whitelisted files can be written via the API.
+
+5. Automatic backups
+   Every file write via the API first creates a timestamped backup in
+   workspace/.divan-backups/. Backups can be listed and restored via the memory UI.
+
+6. Agent status derivation
+   Agent activity status (active/idle/standby) is derived from the session index files
+   in ~/.openclaw/agents/*/sessions/sessions.json, not from a live connection.
+   This makes the dashboard lightweight — no persistent WebSocket to gateway required.
+
+## Colour Palette (Dark Theme)
+
+Background:    #0a0a0f  (near-black, default page background)
+Surface:       #111118  (card/panel background)
+Border:        #1e1e2e  (card borders, dividers)
+Accent crimson: #dc2626 (Rüstem agent colour, primary action)
+Accent gold:   #d97706  (Ottoman gold, highlights, active states)
+Accent navy:   #1e3a5f  (cool panel accents)
+Accent violet: #7c3aed  (Handan agent colour)
+Text primary:  #f0f0f0
+Text muted:    #6b7280
+Text dim:      #374151
+
+## Coding Conventions
+
+- TypeScript strict mode; explicit return types on functions
+- Functional React components with hooks only (no class components)
+- All UI strings via useLanguage().t("key") — never hardcode user-visible text
+- New i18n keys must be added to BOTH "tr" and "en" dictionaries in src/lib/i18n.ts
+- API route handlers are thin; business logic goes in src/lib/
+- File paths always constructed via path.join(); never string concatenation
+- Environment variables accessed only in server-side code (API routes, lib/); never in client components
+- Component filenames: PascalCase (AgentCard.tsx); lib/util files: camelCase (workspace.ts)
+- Tailwind only; no custom CSS except for global.css base resets and CSS custom properties
