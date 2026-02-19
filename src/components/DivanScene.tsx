@@ -49,6 +49,7 @@ interface DivanSceneProps {
   agents: AgentState[];
   onFocusChange?: (name: string | null) => void;
   onDoubleClick?: (type: "agent" | "tool", name: string) => void;
+  onToolInspect?: (toolStationId: string) => void;
 }
 
 /* ═══════ TOOL STATIONS (space-themed) ═══════ */
@@ -751,7 +752,7 @@ function EditorCamera({ defaultTarget }: { defaultTarget: THREE.Vector3 }) {
 
 /* ═══════ SCENE CONTENT ═══════ */
 
-function SceneContent({ agents, liveData, onFocusChange, onDoubleClick }: { agents: AgentState[]; liveData: LiveData | null; onFocusChange?: (name: string | null) => void; onDoubleClick?: (type: "agent" | "tool", name: string) => void }) {
+function SceneContent({ agents, liveData, onFocusChange, onDoubleClick, onToolInspect }: { agents: AgentState[]; liveData: LiveData | null; onFocusChange?: (name: string | null) => void; onDoubleClick?: (type: "agent" | "tool", name: string) => void; onToolInspect?: (toolStationId: string) => void }) {
   const [, setHoveredAgent] = useState<string | null>(null);
   const handleHover = useCallback((name: string | null) => setHoveredAgent(name), []);
 
@@ -840,7 +841,16 @@ function SceneContent({ agents, liveData, onFocusChange, onDoubleClick }: { agen
       <EditorCamera defaultTarget={defaultTarget} />
 
       {TOOL_STATIONS.map((s) => (
-        <ToolStation key={s.id} station={s} activity={liveData?.toolCategories?.[s.id] || null} onClick={() => handleFocus(s.label, s.position)} onDoubleClick={() => onDoubleClick?.("tool", s.id)} />
+        <ToolStation
+          key={s.id}
+          station={s}
+          activity={liveData?.toolCategories?.[s.id] || null}
+          onClick={() => {
+            handleFocus(s.label, s.position);
+            onToolInspect?.(s.id);
+          }}
+          onDoubleClick={() => onDoubleClick?.("tool", s.id)}
+        />
       ))}
 
       {beams.map((b, i) => <ActivityBeam key={`b${i}`} from={b.from} to={b.to} color={b.color} intensity={b.intensity} />)}
@@ -896,7 +906,7 @@ function HUD({ focusedName }: { focusedName: string | null }) {
 
 /* ═══════ MAIN ═══════ */
 
-export default function DivanScene({ agents, onFocusChange, onDoubleClick }: DivanSceneProps) {
+export default function DivanScene({ agents, onFocusChange, onDoubleClick, onToolInspect }: DivanSceneProps) {
   const [liveData, setLiveData] = useState<LiveData | null>(null);
   const [focusedName, setFocusedName] = useState<string | null>(null);
 
@@ -939,7 +949,7 @@ export default function DivanScene({ agents, onFocusChange, onDoubleClick }: Div
           raycaster={{ params: { Points: { threshold: 0.1 } } as any }}
         >
           <Suspense fallback={null}>
-            <SceneContent agents={agentStates} liveData={liveData} onFocusChange={handleFocus} onDoubleClick={onDoubleClick} />
+            <SceneContent agents={agentStates} liveData={liveData} onFocusChange={handleFocus} onDoubleClick={onDoubleClick} onToolInspect={onToolInspect} />
           </Suspense>
         </Canvas>
         <HUD focusedName={focusedName} />
