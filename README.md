@@ -1,8 +1,3 @@
-
-<div style="text-align: center;">
-  <img src=docs/logo.png alt="demo" />
-</div>
-
 # Divan — Mission Control for OpenClaw
 
 > A Vibecraft-inspired 3D dashboard for OpenClaw AI agent workspaces
@@ -144,3 +139,9 @@ git push origin feat/your-feature
 ## License
 
 MIT © 2026 [Talha Orak](https://github.com/talhaorak) — see [LICENSE](LICENSE) for details.
+
+---
+
+<div style="text-align: center;">
+  <img src=docs/logo.png alt="demo" />
+</div>
