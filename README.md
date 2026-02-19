@@ -1,3 +1,7 @@
+<div style="text-align: center;">
+  <img src="docs/divan_space.gif" alt="demo" />
+</div>
+
 # Divan — Mission Control for OpenClaw
 
 > A Vibecraft-inspired 3D dashboard for OpenClaw AI agent workspaces
@@ -12,11 +16,6 @@ Divan is the command centre for your [OpenClaw](https://openclaw.ai) AI agent wo
 ---
 
 ## Screens
-
-<div style="text-align: center;">
-  <img src="docs/divan_space.gif" alt="demo" />
-</div>
-
  
 | Dashboard | Memory Browser |
 |-----------|---------------|
