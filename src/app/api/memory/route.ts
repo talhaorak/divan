@@ -59,7 +59,7 @@ export async function GET(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    const { file, content } = await request.json();
+    const { file, content, agent } = await request.json();
     if (!file || typeof content !== "string") {
       return NextResponse.json({ error: "Missing file or content" }, { status: 400 });
     }
@@ -71,13 +71,15 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "This file cannot be edited" }, { status: 403 });
     }
 
-    const path = allowedRoots.includes(file) ? file : (file.startsWith("memory/") ? file : `memory/${file}`);
+    const prefix = agent && agent !== "main" ? `agents/${agent}/workspace/` : "";
+    const rel = allowedRoots.includes(file) ? file : (file.startsWith("memory/") ? file : `memory/${file}`);
+    const relPath = prefix + rel;
 
     // Backup first
-    const backupName = await backupFile(path);
+    const backupName = await backupFile(relPath);
 
     // Write
-    const ok = await writeFileContent(path, content);
+    const ok = await writeFileContent(relPath, content);
     if (!ok) return NextResponse.json({ error: "Write failed" }, { status: 500 });
 
     return NextResponse.json({ ok: true, backup: backupName });
