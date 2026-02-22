@@ -46,9 +46,7 @@ export async function GET() {
   // 4. Cron jobs summary from file
   let cronJobs: CronSummary[] = [];
   try {
-    const workspace =
-      process.env.OPENCLAW_WORKSPACE || path.join(os.homedir(), "clawd");
-    const cronPath = path.join(workspace, ".openclaw", "cron-state.json");
+    const cronPath = path.join(os.homedir(), ".openclaw", "cron", "jobs.json");
     const raw = await fs.readFile(cronPath, "utf-8");
     const data = JSON.parse(raw);
     cronJobs = (data.jobs || []).map((j: Record<string, unknown>) => ({

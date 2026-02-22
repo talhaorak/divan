@@ -4,7 +4,7 @@ import path from "path";
 import os from "os";
 import yaml from "yaml";
 
-const WORKSPACE = process.env.OPENCLAW_WORKSPACE || path.join(os.homedir(), "clawd");
+const WORKSPACE = process.env.OPENCLAW_WORKSPACE || path.join(os.homedir(), ".openclaw", "workspace");
 
 export async function GET() {
   // 1. Memory file count
@@ -27,25 +27,13 @@ export async function GET() {
     // ignore
   }
 
-  // 3. Cron jobs — read from OpenClaw config or count known scheduled items
+  // 3. Cron jobs — read from ~/.openclaw/cron/jobs.json
   let cronCount = 0;
   try {
-    // Try reading openclaw cron state
-    const configPaths = [
-      path.join(WORKSPACE, ".openclaw/cron-state.json"),
-      path.join(WORKSPACE, "cron-state.json"),
-    ];
-    for (const cp of configPaths) {
-      try {
-        const raw = await fs.readFile(cp, "utf-8");
-        const data = JSON.parse(raw);
-        if (Array.isArray(data)) cronCount = data.length;
-        else if (data.jobs) cronCount = data.jobs.length;
-        break;
-      } catch {
-        continue;
-      }
-    }
+    const cronFile = path.join(os.homedir(), ".openclaw", "cron", "jobs.json");
+    const raw = await fs.readFile(cronFile, "utf-8");
+    const data = JSON.parse(raw);
+    cronCount = Array.isArray(data.jobs) ? data.jobs.length : 0;
   } catch {
     // ignore
   }
@@ -64,7 +52,7 @@ export async function GET() {
   }
 
   // 5. Last heartbeat — check most recent memory file timestamp
-  let lastActivity = "";
+  let lastActivityAt = 0;
   try {
     const memDir = path.join(WORKSPACE, "memory");
     const files = await fs.readdir(memDir);
@@ -72,10 +60,7 @@ export async function GET() {
     mdFiles.sort().reverse();
     if (mdFiles.length > 0) {
       const stat = await fs.stat(path.join(memDir, mdFiles[0]));
-      const diff = Date.now() - stat.mtimeMs;
-      const mins = Math.floor(diff / 60000);
-      if (mins < 60) lastActivity = `${mins} dk önce`;
-      else lastActivity = `${Math.floor(mins / 60)} saat önce`;
+      lastActivityAt = stat.mtimeMs;
     }
   } catch {
     // ignore
@@ -100,7 +85,7 @@ export async function GET() {
     goalCount,
     cronCount,
     activeJobs,
-    lastActivity,
+    lastActivityAt,
     uncommittedChanges,
     timestamp: Date.now(),
   });

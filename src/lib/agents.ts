@@ -99,7 +99,7 @@ export async function discoverAgents(): Promise<DiscoveredAgent[]> {
 
   const agentsDir = path.join(os.homedir(), ".openclaw", "agents");
   const mainWorkspace =
-    process.env.OPENCLAW_WORKSPACE || path.join(os.homedir(), "clawd");
+    process.env.OPENCLAW_WORKSPACE || path.join(os.homedir(), ".openclaw", "workspace");
 
   try {
     const entries = await fs.readdir(agentsDir, { withFileTypes: true });

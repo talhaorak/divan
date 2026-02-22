@@ -3,7 +3,7 @@ import path from "path";
 import os from "os";
 import yaml from "yaml";
 
-export const WORKSPACE = process.env.OPENCLAW_WORKSPACE || path.join(os.homedir(), "clawd");
+export const WORKSPACE = process.env.OPENCLAW_WORKSPACE || path.join(os.homedir(), ".openclaw", "workspace");
 
 export async function readWorkspaceFile(
   relativePath: string

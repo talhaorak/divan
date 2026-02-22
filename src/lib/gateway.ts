@@ -1,8 +1,8 @@
 import WebSocket from "ws";
 import crypto from "crypto";
 
-const GW_URL = process.env.OPENCLAW_GATEWAY_URL || "ws://127.0.0.1:18009";
-const GW_HTTP = process.env.OPENCLAW_GATEWAY_HTTP || "http://127.0.0.1:18009";
+const GW_URL = process.env.OPENCLAW_GATEWAY_URL || "ws://127.0.0.1:18789";
+const GW_HTTP = process.env.OPENCLAW_GATEWAY_HTTP || "http://127.0.0.1:18789";
 const GW_TOKEN = process.env.OPENCLAW_GATEWAY_TOKEN || "";
 
 // Simple request-response over WS

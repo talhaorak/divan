@@ -9,8 +9,18 @@ interface Stats {
   goalCount: number;
   cronCount: number;
   activeJobs: number;
-  lastActivity: string;
+  lastActivityAt: number;
   uncommittedChanges: number;
+}
+
+function formatRelativeTime(ts: number, t: (key: string, vars?: Record<string, string | number>) => string): string {
+  const diff = Date.now() - ts;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 2) return t("time.justNow");
+  if (mins < 60) return t("time.minsAgo", { n: mins });
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return t("time.hoursAgo", { n: hours });
+  return t("time.daysAgo", { n: Math.floor(hours / 24) });
 }
 
 export default function QuickStats() {
@@ -87,14 +97,14 @@ export default function QuickStats() {
       ))}
 
       {/* Last activity indicator */}
-      {stats?.lastActivity && (
+      {stats != null && stats.lastActivityAt > 0 && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           className="col-span-4 text-right"
         >
           <span className="text-[10px] text-[#6b7280]">
-            {t("stats.lastActivity")}: {stats.lastActivity}
+            {t("stats.lastActivity")}: {formatRelativeTime(stats!.lastActivityAt, t)}
           </span>
         </motion.div>
       )}
