@@ -14,6 +14,10 @@ interface AgentState {
   status: "active" | "idle" | "standby" | "sleeping";
   color: string;
   position: [number, number, number];
+  cooldownCount?: number;
+  primaryModel?: string;
+  lastErrorText?: string;
+  cooldownRemainingMs?: number;
 }
 
 interface SubAgentState {
@@ -46,6 +50,7 @@ interface LiveData {
 }
 
 interface DivanSceneProps {
+  onAgentInspect?: (agentId: string) => void;
   agents: AgentState[];
   onFocusChange?: (name: string | null) => void;
   onDoubleClick?: (type: "agent" | "tool", name: string) => void;
@@ -553,16 +558,19 @@ function SubAgentSatellite({ sub, parentPos, index }: { sub: SubAgentState; pare
 
 /* ═══════ AGENT ORB ═══════ */
 
-function AgentOrb({ agent, subAgents, onHover, onClick, onDoubleClick }: { agent: AgentState; subAgents: SubAgentState[]; onHover: (name: string | null) => void; onClick: () => void; onDoubleClick: () => void }) {
+function AgentOrb({ agent, subAgents, onHover, onClick, onDoubleClick, onInspect }: { agent: AgentState; subAgents: SubAgentState[]; onHover: (name: string | null) => void; onClick: () => void; onDoubleClick: () => void; onInspect?: () => void }) {
   const groupRef = useRef<THREE.Group>(null);
   const meshRef = useRef<THREE.Mesh>(null);
   const glowRef = useRef<THREE.Mesh>(null);
   const ringRef = useRef<THREE.Mesh>(null);
+  const warnRingRef = useRef<THREE.Mesh>(null);
   const [hovered, setHovered] = useState(false);
   const { t } = useLanguage();
 
   const isActive = agent.status === "active";
   const isIdle = agent.status === "idle";
+  const inCooldown = (agent.cooldownCount ?? 0) > 0;
+  const orbColor = inCooldown ? "#f59e0b" : agent.color;
   const baseEmissive = isActive ? 1.5 : isIdle ? 0.8 : 0.3;
 
   const statusLabel = t(`scene.status.${agent.status}`);
@@ -583,6 +591,10 @@ function AgentOrb({ agent, subAgents, onHover, onClick, onDoubleClick }: { agent
       (glowRef.current.material as THREE.MeshBasicMaterial).opacity = hovered ? 0.12 : (isActive ? 0.08 : 0.03);
     }
     if (ringRef.current) { ringRef.current.rotation.z += delta * (isActive ? 1.5 : 0.3); ringRef.current.rotation.x = Math.sin(Date.now() * 0.0005) * 0.2; }
+    if (warnRingRef.current && inCooldown) {
+      warnRingRef.current.rotation.z -= delta * 3;
+      (warnRingRef.current.material as THREE.MeshBasicMaterial).opacity = 0.4 + Math.sin(Date.now() * 0.004) * 0.3;
+    }
   });
 
   return (
@@ -590,24 +602,35 @@ function AgentOrb({ agent, subAgents, onHover, onClick, onDoubleClick }: { agent
       <group ref={groupRef} position={agent.position}>
         <mesh
           onPointerOver={handleOver} onPointerOut={handleOut}
-          onClick={(e) => { e.stopPropagation(); onClick(); }}
+          onClick={(e) => { e.stopPropagation(); onClick(); onInspect?.(); }}
           onDoubleClick={(e) => { e.stopPropagation(); onDoubleClick(); }}
           visible={false}
         >
           <sphereGeometry args={[0.5, 8, 8]} /><meshBasicMaterial />
         </mesh>
-        <mesh ref={glowRef}><sphereGeometry args={[0.45, 16, 16]} /><meshBasicMaterial color={agent.color} transparent opacity={0.06} blending={THREE.AdditiveBlending} depthWrite={false} /></mesh>
-        <mesh ref={ringRef} rotation={[Math.PI / 2, 0, 0]}><torusGeometry args={[0.35, 0.007, 8, 48]} /><meshBasicMaterial color={agent.color} transparent opacity={isActive ? 0.5 : 0.2} blending={THREE.AdditiveBlending} depthWrite={false} /></mesh>
-        <mesh rotation={[0, 0, Math.PI / 3]}><torusGeometry args={[0.28, 0.004, 8, 48]} /><meshBasicMaterial color={agent.color} transparent opacity={isActive ? 0.25 : 0.08} blending={THREE.AdditiveBlending} depthWrite={false} /></mesh>
-        <mesh ref={meshRef}><sphereGeometry args={[0.2, 32, 32]} /><meshStandardMaterial color={agent.color} emissive={agent.color} emissiveIntensity={hovered ? baseEmissive * 1.5 : baseEmissive} roughness={0.12} metalness={0.92} /></mesh>
+        <mesh ref={glowRef}><sphereGeometry args={[0.45, 16, 16]} /><meshBasicMaterial color={orbColor} transparent opacity={0.06} blending={THREE.AdditiveBlending} depthWrite={false} /></mesh>
+        <mesh ref={ringRef} rotation={[Math.PI / 2, 0, 0]}><torusGeometry args={[0.35, 0.007, 8, 48]} /><meshBasicMaterial color={orbColor} transparent opacity={isActive ? 0.5 : 0.2} blending={THREE.AdditiveBlending} depthWrite={false} /></mesh>
+        <mesh rotation={[0, 0, Math.PI / 3]}><torusGeometry args={[0.28, 0.004, 8, 48]} /><meshBasicMaterial color={orbColor} transparent opacity={isActive ? 0.25 : 0.08} blending={THREE.AdditiveBlending} depthWrite={false} /></mesh>
+        {inCooldown && (
+          <mesh ref={warnRingRef} rotation={[Math.PI / 4, 0, 0]}>
+            <torusGeometry args={[0.42, 0.009, 8, 48]} />
+            <meshBasicMaterial color="#f59e0b" transparent opacity={0.6} blending={THREE.AdditiveBlending} depthWrite={false} />
+          </mesh>
+        )}
+        <mesh ref={meshRef}><sphereGeometry args={[0.2, 32, 32]} /><meshStandardMaterial color={orbColor} emissive={orbColor} emissiveIntensity={hovered ? baseEmissive * 1.5 : baseEmissive} roughness={0.12} metalness={0.92} /></mesh>
         <mesh><sphereGeometry args={[0.05, 16, 16]} /><meshBasicMaterial color="white" transparent opacity={isActive ? 0.9 : 0.3} blending={THREE.AdditiveBlending} depthWrite={false} /></mesh>
         <Html position={[0, -0.55, 0]} center distanceFactor={4} style={{ pointerEvents: "none", userSelect: "none" }}>
           <div style={{ textAlign: "center", whiteSpace: "nowrap", transform: hovered ? "scale(1.12)" : "scale(1)", transition: "transform 0.2s" }}>
             <div style={{ fontSize: "14px", fontWeight: 600, color: hovered ? "#fff" : "#e8e6e3", textShadow: "0 0 8px rgba(0,0,0,0.95)", letterSpacing: "0.5px" }}>{agent.name}</div>
-            <div style={{ fontSize: "10px", fontWeight: 500, color: agent.color, textShadow: "0 0 6px rgba(0,0,0,0.95)", marginTop: "2px", opacity: hovered ? 1 : 0.8 }}>
-              {statusLabel}
+            <div style={{ fontSize: "10px", fontWeight: 500, color: orbColor, textShadow: "0 0 6px rgba(0,0,0,0.95)", marginTop: "2px", opacity: hovered ? 1 : 0.8 }}>
+              {inCooldown ? `⚠ COOLDOWN (${agent.cooldownCount})` : statusLabel}
               {subAgents.length > 0 && <span style={{ color: "#22c55e", marginLeft: "4px" }}>+{subAgents.length} sub</span>}
             </div>
+            {agent.primaryModel && (
+              <div style={{ fontSize: "8px", color: "#6b7280", textShadow: "0 0 4px rgba(0,0,0,0.95)", marginTop: "1px", opacity: hovered ? 0.8 : 0.5 }}>
+                {agent.primaryModel.split("/").slice(-1)[0]}
+              </div>
+            )}
           </div>
         </Html>
       </group>
@@ -752,7 +775,7 @@ function EditorCamera({ defaultTarget }: { defaultTarget: THREE.Vector3 }) {
 
 /* ═══════ SCENE CONTENT ═══════ */
 
-function SceneContent({ agents, liveData, onFocusChange, onDoubleClick, onToolInspect }: { agents: AgentState[]; liveData: LiveData | null; onFocusChange?: (name: string | null) => void; onDoubleClick?: (type: "agent" | "tool", name: string) => void; onToolInspect?: (toolStationId: string) => void }) {
+function SceneContent({ agents, liveData, onFocusChange, onDoubleClick, onToolInspect, onAgentInspect }: { agents: AgentState[]; liveData: LiveData | null; onFocusChange?: (name: string | null) => void; onDoubleClick?: (type: "agent" | "tool", name: string) => void; onToolInspect?: (toolStationId: string) => void; onAgentInspect?: (agentId: string) => void }) {
   const [, setHoveredAgent] = useState<string | null>(null);
   const handleHover = useCallback((name: string | null) => setHoveredAgent(name), []);
 
@@ -857,7 +880,7 @@ function SceneContent({ agents, liveData, onFocusChange, onDoubleClick, onToolIn
       {agentConns.map((c, i) => <ActivityBeam key={`c${i}`} from={c.from} to={c.to} color={c.color} intensity={0.8} />)}
 
       {agents.map((agent) => (
-        <AgentOrb key={agent.name} agent={agent} subAgents={subsByParent[agent.name] || subsByParent[agent.id || ""] || []} onHover={handleHover} onClick={() => handleFocus(agent.name, agent.position)} onDoubleClick={() => onDoubleClick?.("agent", agent.name)} />
+        <AgentOrb key={agent.name} agent={agent} subAgents={subsByParent[agent.name] || subsByParent[agent.id || ""] || []} onHover={handleHover} onClick={() => handleFocus(agent.name, agent.position)} onDoubleClick={() => onDoubleClick?.("agent", agent.name)} onInspect={agent.id ? () => onAgentInspect?.(agent.id!) : undefined} />
       ))}
     </>
   );
@@ -906,7 +929,7 @@ function HUD({ focusedName }: { focusedName: string | null }) {
 
 /* ═══════ MAIN ═══════ */
 
-export default function DivanScene({ agents, onFocusChange, onDoubleClick, onToolInspect }: DivanSceneProps) {
+export default function DivanScene({ agents, onFocusChange, onDoubleClick, onToolInspect, onAgentInspect }: DivanSceneProps) {
   const [liveData, setLiveData] = useState<LiveData | null>(null);
   const [focusedName, setFocusedName] = useState<string | null>(null);
 
@@ -949,7 +972,7 @@ export default function DivanScene({ agents, onFocusChange, onDoubleClick, onToo
           raycaster={{ params: { Points: { threshold: 0.1 } } as any }}
         >
           <Suspense fallback={null}>
-            <SceneContent agents={agentStates} liveData={liveData} onFocusChange={handleFocus} onDoubleClick={onDoubleClick} onToolInspect={onToolInspect} />
+            <SceneContent agents={agentStates} liveData={liveData} onFocusChange={handleFocus} onDoubleClick={onDoubleClick} onToolInspect={onToolInspect} onAgentInspect={onAgentInspect} />
           </Suspense>
         </Canvas>
         <HUD focusedName={focusedName} />
