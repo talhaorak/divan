@@ -240,6 +240,24 @@ const tr: Translations = {
   "team.agent.genericDescription": "OpenClaw ajanı.",
   "team.agent.noCapabilities": "Yetenek bilgisi bulunamadı.",
 
+  // ── Auth profiles / cooldown ─────────────────────────────────────
+  "team.profiles": "Auth Profilleri",
+  "team.profiles.noProfiles": "Profil bulunamadı.",
+  "team.profiles.status.ok": "Aktif",
+  "team.profiles.status.cooldown": "Bekleme",
+  "team.profiles.status.disabled": "Devre Dışı",
+  "team.profiles.cooldownRemaining": "Kalan: {time}",
+  "team.profiles.resetCooldown": "Sıfırla",
+  "team.profiles.resetting": "...",
+  "team.profiles.resetDone": "✓ Sıfırlandı",
+  "team.profiles.resetError": "✗ Hata",
+  "team.profiles.errors": "{n} hata",
+  "team.profiles.disabledReason": "Sebep: {reason}",
+  "team.cooldownBanner": "⚠ {n} profil bekleme modunda",
+  "team.model": "Model",
+  "team.model.primary": "Birincil",
+  "team.model.fallbacks": "Yedekler",
+
   // ── Agent Selector ───────────────────────────────────────────────
   "agentSelector.allAgents": "Tüm Ajanlar",
   "agentSelector.label": "Ajan:",
@@ -467,6 +485,24 @@ const en: Translations = {
   // Agent detailed meta (generic — actual data comes from IDENTITY.md / SOUL.md)
   "team.agent.genericDescription": "OpenClaw agent.",
   "team.agent.noCapabilities": "No capability information available.",
+
+  // ── Auth profiles / cooldown ─────────────────────────────────────
+  "team.profiles": "Auth Profiles",
+  "team.profiles.noProfiles": "No profiles found.",
+  "team.profiles.status.ok": "Active",
+  "team.profiles.status.cooldown": "Cooldown",
+  "team.profiles.status.disabled": "Disabled",
+  "team.profiles.cooldownRemaining": "Remaining: {time}",
+  "team.profiles.resetCooldown": "Reset",
+  "team.profiles.resetting": "...",
+  "team.profiles.resetDone": "✓ Reset",
+  "team.profiles.resetError": "✗ Error",
+  "team.profiles.errors": "{n} errors",
+  "team.profiles.disabledReason": "Reason: {reason}",
+  "team.cooldownBanner": "⚠ {n} profiles in cooldown",
+  "team.model": "Model",
+  "team.model.primary": "Primary",
+  "team.model.fallbacks": "Fallbacks",
 
   // ── Agent Selector ───────────────────────────────────────────────
   "agentSelector.allAgents": "All Agents",

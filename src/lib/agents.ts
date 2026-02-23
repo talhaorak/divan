@@ -11,6 +11,8 @@ export interface DiscoveredAgent {
   description: string; // from SOUL.md first paragraph
   capabilities: string[]; // bullet points from SOUL.md
   hasWorkspace: boolean;  // true if workspace is known
+  primaryModel?: string;  // from agent/defaults.json
+  fallbackModels?: string[]; // from agent/defaults.json
 }
 
 const COLOR_PALETTE = ["#dc2626", "#7c3aed", "#059669", "#d97706", "#2563eb"];
@@ -163,6 +165,19 @@ export async function discoverAgents(): Promise<DiscoveredAgent[]> {
         }
       }
 
+      // Read defaults.json for model info
+      let primaryModel: string | undefined;
+      let fallbackModels: string[] | undefined;
+      try {
+        const defaultsPath = path.join(agentsDir, agentId, "agent", "defaults.json");
+        const defaultsRaw = await fs.readFile(defaultsPath, "utf-8");
+        const defaults = JSON.parse(defaultsRaw);
+        primaryModel = defaults?.defaults?.model?.primary;
+        fallbackModels = defaults?.defaults?.model?.fallbacks;
+      } catch {
+        // defaults.json missing — that's fine
+      }
+
       agents.push({
         id: agentId,
         name,
@@ -172,6 +187,8 @@ export async function discoverAgents(): Promise<DiscoveredAgent[]> {
         description,
         capabilities,
         hasWorkspace: agentId === "main" || !!agentWorkspace,
+        primaryModel,
+        fallbackModels,
       });
     }
 
